@@ -16,6 +16,10 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 ```
+Create environment variables file (Literally create a file called '.env') and add the following attributes(s)
+```bash
+WORKING_DIR = <The working directory of the project>
+```
 Open terminal in working directory and run project
 ```
 python main.py

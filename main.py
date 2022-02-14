@@ -76,9 +76,16 @@ def get_flight_list(passenger_data):
     return flights
 
 
-# TODO: Calculate the line-of-sight (nautical) miles for each flight and the total travelled by each passenger 
-# and thus output the passenger having earned the highest air miles.
 def get_highest_airmile_passenger(airport_data, passenger_data):
+    """ Calculates miles travelled for each passenger based on flight data
+
+    Args:
+        airport_data (pd.DataFrame): Airport data
+        passenger_data (pd.DataFrame): Passenger flight data
+
+    Returns:
+        string: id of passenger with greatest distance travelled
+    """
     start = time.perf_counter()
     # Nautical miles for each flight
     # get list of flights to and from
@@ -148,20 +155,20 @@ def main():
     passenger = get_highest_airmile_passenger(airport_data, passenger_data)
     
     # Print data
-    # print("-------------------------")
-    # print("Flight List")
-    # print("-------------------------")
-    # print(flights_per_airport)
+    print("-------------------------")
+    print("Flight List")
+    print("-------------------------")
+    print(flights_per_airport)
 
-    # print("-------------------------")
-    # print("Flights per airport")
-    # print("-------------------------")
-    # print(flight_list[:1])
+    print("-------------------------")
+    print("Flights per airport")
+    print("-------------------------")
+    print(flight_list[:1])
 
-    # print("-------------------------")
-    # print("Unused airports")
-    # print("-------------------------")
-    # print(unused_airports)
+    print("-------------------------")
+    print("Unused airports")
+    print("-------------------------")
+    print(unused_airports)
 
     print("-------------------------")
     print("Highest Airmile passenger")
