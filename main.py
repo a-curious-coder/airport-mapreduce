@@ -4,10 +4,12 @@ import os
 import time
 from datetime import datetime
 
-from nautical_calculations.basic import get_distance
-from nautical_calculations.operations import convert_to_miles
 import pandas as pd
 from dotenv import load_dotenv
+from nautical_calculations.basic import get_distance
+from nautical_calculations.operations import convert_to_miles
+
+from flight import Flight
 
 
 def get_flights_per_airport(airport_data, passenger_data):
@@ -180,6 +182,54 @@ def get_highest_airmile_passenger(airport_data, passenger_data):
     return passenger, passenger_distances[passenger]
 
 
+def mapper(data):
+    """Mapper function
+    Args:
+        data (pd.Dataframe): passenger data with headers
+    """
+
+    # Convert each row in dataframe to a string
+    passenger_data_strings = data.to_string(
+        header=False, index=False, index_names=False
+    ).split("\n")
+
+    # Separate each value in each row by a comma
+    wrangled_passenger_data = [",".join(row.split()) for row in passenger_data_strings]
+
+    # Pools
+    fid_pool = []
+    pid_pool = []
+
+    for line in wrangled_passenger_data:
+        # convert this line to list of the data's variables as strings
+        print(f"1.\t{line}")
+        elements = line.split(",")
+        print(f"2.\t{elements}")
+        # Put Passenger ID at the last place of the list
+        elements = elements[-5:] + elements[:-5]
+        print(f"3.\t{elements}")
+        # Combine Flight ID & Departure Aiport Code
+        results = [elements[0] + "_" + elements[1]]
+        results.extend(elements[2:])
+        print(f"4.\t{results}")
+        line = "\t".join(results)
+        current = Flight(line)
+        # Mapper Output
+        results = current.to_string()
+        print("\t".join(results))
+
+        # Add FLIGHT_ID & PASSENGER_ID TO THE POOL
+        fid_pool.append(current.get_key())
+        pid_pool.append(current.passenger_list[0])
+        return
+
+    # Output ID_POOL for cross-referencing
+    print("0_flight_pool", "\t", "", sep="", end="")
+    print("\t".join(list(set(fid_pool))))
+    print("0_passenger_pool", "\t", "", sep="", end="")
+    print("\t".join(list(set(pid_pool))))
+
+
 # Misc functions
 def cls():
     """Clears console - useful for debugging/testing"""
@@ -223,42 +273,43 @@ def main():
         ],
     )
 
-    airport_data = pd.read_csv(
-        f"{data_dir}/Top30_airports_LatLong.csv",
-        names=["airport", "airport_code", "lat", "long"],
-    )
-    print(airport_data.info())
-    airports = get_airports(airport_data)
-    print(*airports.items(), sep="\n")
-    return
+    # airport_data = pd.read_csv(
+    #     f"{data_dir}/Top30_airports_LatLong.csv",
+    #     names=["airport", "airport_code", "lat", "long"],
+    # )
+    mapper(passenger_data)
 
-    # Collect data
-    flights_per_airport, unused_airports = get_flights_per_airport(
-        airport_data, passenger_data
-    )
-    # flight_list = get_flight_list(passenger_data)
-    passenger, distance = get_highest_airmile_passenger(airport_data, passenger_data)
+    # print(airport_data.info())
+    # airports = get_airports(airport_data)
+    # print(*airports.items(), sep="\n")
 
-    # Print data
-    print("\n-------------------------")
-    print("Flights per airport")
-    print("-------------------------")
-    print(*flights_per_airport, sep="\n")
+    # # Collect data
+    # flights_per_airport, unused_airports = get_flights_per_airport(
+    #     airport_data, passenger_data
+    # )
+    # # flight_list = get_flight_list(passenger_data)
+    # passenger, distance = get_highest_airmile_passenger(airport_data, passenger_data)
 
-    print("-------------------------")
-    print("Unused airports")
-    print("-------------------------")
-    print(*unused_airports, sep="\n")
+    # # Print data
+    # print("\n-------------------------")
+    # print("Flights per airport")
+    # print("-------------------------")
+    # print(*flights_per_airport, sep="\n")
 
     # print("-------------------------")
-    # print("Flight List")
+    # print("Unused airports")
     # print("-------------------------")
-    # print(*flight_list[:1], sep="\n")
+    # print(*unused_airports, sep="\n")
 
-    print("\n-------------------------")
-    print("Highest Airmile passenger")
-    print("-------------------------")
-    print(f"{passenger}\t{distance} miles")
+    # # print("-------------------------")
+    # # print("Flight List")
+    # # print("-------------------------")
+    # # print(*flight_list[:1], sep="\n")
+
+    # print("\n-------------------------")
+    # print("Highest Airmile passenger")
+    # print("-------------------------")
+    # print(f"{passenger}\t{distance} miles")
 
 
 if __name__ == "__main__":

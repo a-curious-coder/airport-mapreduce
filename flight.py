@@ -23,20 +23,21 @@ class Flight:
         self.flight_id, self.from_airport = flight_from.split("_")
         self.passenger_list = list(set(self.passenger_list.strip().split(delimiter)))
 
-    def output(self):
-        """...
+    def to_string(self):
+        """Converts each element in this flight object to a string and returns it as string
 
         Returns:
-            ???: _description_
+            list: list of flight object elements as string
         """
 
+        # Create list with flight attribute values
         results = [
             self.get_key(),
             self.to_airport,
             self.depart_time,
             str(self.total_flight_time),
         ]
-
+        
         # If passenger_list has more than 1 passenger, extend to results
         if len(self.passenger_list) > 1:
             results.extend(set(self.passenger_list))
