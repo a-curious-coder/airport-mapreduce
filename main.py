@@ -188,7 +188,8 @@ def mapper(data):
         data (pd.Dataframe): passenger data with headers
     """
 
-    # Convert each row in dataframe to a string
+    print("[*]\tMapper")
+    # Convert entire dataframe to a string, each row separated by a new line
     passenger_data_strings = data.to_string(
         header=False, index=False, index_names=False
     ).split("\n")
@@ -196,38 +197,40 @@ def mapper(data):
     # Separate each value in each row by a comma
     wrangled_passenger_data = [",".join(row.split()) for row in passenger_data_strings]
 
-    # Pools
+    # Initialise key/value pools
     fid_pool = []
     pid_pool = []
 
-    for line in wrangled_passenger_data:
-        # convert this line to list of the data's variables as strings
-        print(f"1.\t{line}")
-        elements = line.split(",")
-        print(f"2.\t{elements}")
+    for row in wrangled_passenger_data:
+        # Convert this row in the passenger_data to list of the data's variables as strings
+        elements = row.split(",")
         # Put Passenger ID at the last place of the list
         elements = elements[-5:] + elements[:-5]
-        print(f"3.\t{elements}")
-        # Combine Flight ID & Departure Aiport Code
-        results = [elements[0] + "_" + elements[1]]
-        results.extend(elements[2:])
-        print(f"4.\t{results}")
-        line = "\t".join(results)
-        current = Flight(line)
+        # Merge flight id with airport code
+        flight_data = [elements[0] + "_" + elements[1]]
+        flight_data.extend(elements[2:])
+        # Convert transformed data back to string with elements separated by commas
+        row = ",".join(flight_data)
+
+        flight = Flight(row)
         # Mapper Output
-        results = current.to_string()
-        print("\t".join(results))
+        flight_data = flight.to_string()
+        # print("\t".join(flight_data))
 
         # Add FLIGHT_ID & PASSENGER_ID TO THE POOL
-        fid_pool.append(current.get_key())
-        pid_pool.append(current.passenger_list[0])
-        return
+        fid_pool.append(flight.get_key())
+        pid_pool.append(flight.passenger_list[0])
 
     # Output ID_POOL for cross-referencing
-    print("0_flight_pool", "\t", "", sep="", end="")
-    print("\t".join(list(set(fid_pool))))
-    print("0_passenger_pool", "\t", "", sep="", end="")
-    print("\t".join(list(set(pid_pool))))
+    # print("Flight Pool\n", "\t", "", sep="", end="")
+    # print(len(fid_pool))
+    # print("Passenger Pool\n", "\t", "", sep="", end="")
+    # print(len(pid_pool))
+    return fid_pool, pid_pool
+
+
+def reduce():
+    pass
 
 
 # Misc functions
@@ -277,7 +280,7 @@ def main():
     #     f"{data_dir}/Top30_airports_LatLong.csv",
     #     names=["airport", "airport_code", "lat", "long"],
     # )
-    mapper(passenger_data)
+    fid_pool, pid_pool = mapper(passenger_data)
 
     # print(airport_data.info())
     # airports = get_airports(airport_data)

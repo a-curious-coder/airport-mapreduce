@@ -1,0 +1,10 @@
+# Folders
+__pycache__/
+.vscode/
+.trunk/
+.venv/
+
+# Files
+.flake8
+.isort.cfg
+mapper1.txt
