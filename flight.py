@@ -13,8 +13,9 @@ class Flight:
         self.flight_id, self.from_airport = flight_from.split("_")
         self.passenger_list = list(set(self.passenger_list.strip().split(",")))
 
-    def to_string(self):
-        """Converts each element in this flight object to a string and returns it as string
+    def __str__(self):
+        """Converts each element in this flight object to a string and returns
+        it as string
 
         Returns:
             list: list of flight object elements as string
@@ -35,10 +36,13 @@ class Flight:
             # Otherwise, just add to results
             results += self.passenger_list
 
-        return results
+        return str(results)
 
+    def __len__(self):
+        return 5 + len(self.passenger_list)
+    
     def get_key(self):
-        """get key for flight
+        """get key for flight data
 
         Returns:
             str: key
@@ -53,6 +57,3 @@ class Flight:
             list: clean passenger list
         """
         return list(set(self.passenger_list))
-
-    def __len__(self):  # For len()
-        return 5 + len(self.passenger_list)

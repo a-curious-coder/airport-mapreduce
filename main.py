@@ -195,27 +195,28 @@ def mapper(data):
     ).split("\n")
 
     # Separate each value in each row by a comma
-    wrangled_passenger_data = [",".join(row.split()) for row in passenger_data_strings]
+    passenger_data = [",".join(row.split()) for row in passenger_data_strings]
 
     # Initialise key/value pools
     fid_pool = []
     pid_pool = []
 
-    for row in wrangled_passenger_data:
-        # Convert this row in the passenger_data to list of the data's variables as strings
+    for row in passenger_data:
+        # Convert this row in the passenger_data to list of variables as strings
         elements = row.split(",")
-        # Put Passenger ID at the last place of the list
+        # Move Passenger ID from the beginning of the list to the last place in the list
         elements = elements[-5:] + elements[:-5]
         # Merge flight id with airport code
         flight_data = [elements[0] + "_" + elements[1]]
+        # Appends elements from row position 2 to flight_data
         flight_data.extend(elements[2:])
         # Convert transformed data back to string with elements separated by commas
         row = ",".join(flight_data)
-
+        # Initialise Flight object
         flight = Flight(row)
-        # Mapper Output
-        flight_data = flight.to_string()
-        # print("\t".join(flight_data))
+        
+        # Print Mapper Output for this row
+        print(flight)
 
         # Add FLIGHT_ID & PASSENGER_ID TO THE POOL
         fid_pool.append(flight.get_key())
@@ -281,7 +282,6 @@ def main():
     #     names=["airport", "airport_code", "lat", "long"],
     # )
     fid_pool, pid_pool = mapper(passenger_data)
-
     # print(airport_data.info())
     # airports = get_airports(airport_data)
     # print(*airports.items(), sep="\n")
