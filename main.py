@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
 
-from email import header
-import os
-from re import T
 import operator
-import time
-from datetime import datetime
+import os
 
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 from dotenv import load_dotenv
-from nautical_calculations.basic import get_distance
-from nautical_calculations.operations import convert_to_miles
+from pandas.api.types import CategoricalDtype
 
 from flight import Flight
 
 
 def mapper(data):
-    """Mapper function
+    """Reformat and map flight data
     Args:
         data (pd.Dataframe): passenger data with headers
     """
@@ -51,8 +45,8 @@ def mapper(data):
         # Print Mapper Output for this row
         flights.append(flight)
 
-    # Write each flight to a flights.csv file
-    with open("flights.csv", "w") as f:
+    # Write each flight to a mapped_data.csv file
+    with open("mapped_data.csv", "w") as f:
         for flight in flights:
             f.write(str(flight) + "\n")
 
@@ -210,7 +204,10 @@ def get_airports(data):
 
 
 def load_reduced_data():
-    """Load in reduced data from csv file"""
+    """Load in reduced data from csv file
+    Returns:
+        pd.DataFrame: reduced data
+    """
     reduced_data = []
     with open("reduced.csv", "r") as f:
         data = f.readlines()
@@ -223,14 +220,15 @@ def load_reduced_data():
 
 
 def main():
-    """main function"""
-    # Clear console window
+    """Main function"""
+    # Clear console
     cls()
-    # Load in environment variables from .env
+    # Load environment variables from .env
     load_dotenv()
     # Load user specified data directory
     data_dir = os.getenv("DATA_DIR")
 
+    # Load passenger data with custom headers
     passenger_data = pd.read_csv(
         f"{data_dir}/AComp_Passenger_data_no_error.csv",
         names=[
@@ -242,9 +240,10 @@ def main():
             "flight_duration",
         ],
     )
+    # Map passenger data to flights
     mapper(passenger_data)
     # Load flights into dataframe
-    flights = pd.read_csv("flights.csv",header=None)
+    flights = pd.read_csv("mapped_data.csv",header=None)
     # Sort mapped data by (flight id/airport) key
     sort_mapped_data(flights)
     # Load sorted dataframe into dataframe
