@@ -31,16 +31,26 @@ class Flight:
 
         # If passenger_list has more than 1 passenger, extend to results
         if len(self.passenger_list) > 1:
-            results.extend(set(self.passenger_list))
+            results.extend(self.passenger_list)
         else:
             # Otherwise, just add to results
             results += self.passenger_list
-
-        return str(results)
+        # List to tab separated string
+        return ",".join(results)
+        # return str(results)
 
     def __len__(self):
         return 5 + len(self.passenger_list)
     
+    def add_passenger(self, passenger):
+        """Add passenger to flight
+
+        Returns:
+            list: updated passenger list
+        """
+        self.passenger_list.append(passenger)
+        return self.passenger_list
+
     def get_key(self):
         """get key for flight data
 

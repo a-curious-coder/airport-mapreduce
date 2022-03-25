@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
+from email import header
 import os
+from re import T
 import time
 from datetime import datetime
 
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from dotenv import load_dotenv
 from nautical_calculations.basic import get_distance
 from nautical_calculations.operations import convert_to_miles
@@ -200,6 +203,7 @@ def mapper(data):
     # Initialise key/value pools
     fid_pool = []
     pid_pool = []
+    flights = []
 
     for row in passenger_data:
         # Convert this row in the passenger_data to list of variables as strings
@@ -216,29 +220,90 @@ def mapper(data):
         flight = Flight(row)
         
         # Print Mapper Output for this row
-        print(flight)
-
+        flights.append(flight)
+        
         # Add FLIGHT_ID & PASSENGER_ID TO THE POOL
         fid_pool.append(flight.get_key())
         pid_pool.append(flight.passenger_list[0])
 
-    # Output ID_POOL for cross-referencing
-    # print("Flight Pool\n", "\t", "", sep="", end="")
-    # print(len(fid_pool))
-    # print("Passenger Pool\n", "\t", "", sep="", end="")
-    # print(len(pid_pool))
-    return fid_pool, pid_pool
+    # Write each flight to a flights.csv file
+    with open("flights.csv", "w") as f:
+        for flight in flights:
+            f.write(str(flight) + "\n")
 
 
-def reduce():
-    pass
+def sort_mapped_data(mapped_data):
+    """Sort mapped dataframe
+
+    Args:
+        mapped_data (_type_): _description_
+    """
+    print("[*]\tSorter")
+    order = CategoricalDtype(
+        mapped_data[0].unique().sort(), 
+        ordered=True
+    )
+    # Convert mapped_data key to categorical dtype
+    mapped_data[0] = mapped_data[0].astype(order)
+    # Sort mapped dataframe by key
+    mapped_data.sort_values(0, inplace = True, ascending = True)
+    # Save sorted dataframe to csv file
+    mapped_data.to_csv("sorted_dataframe.csv", index=False, header = False)
+
+
+def reduce(sorted_data):
+    """Condense flight_id
+
+    Args:
+        sorted_data (pd.DataFrame): mapped data
+    """
+    print("[*]\tReduce")
+    last_flight = None
+    last_flight_key = None
+    reduced_data = []
+
+    # Dataframe to string of comma separated values
+    sorted_data_strings = sorted_data.to_string(
+        header=False, index=False, index_names=False
+    ).split("\n")
+    sorted_data_strings = [','.join(ele.split()) for ele in sorted_data_strings]
+
+    # For flight in mapped data
+    for line in sorted_data_strings:
+        # Get flight from line
+        flight = Flight(line)
+        # Check if last flight is the current flight.key
+        if last_flight_key != flight.get_key():
+            # If last_flight_key is not current.key, output the previous key
+            if last_flight_key:
+                # Output to stdout
+                reduced_data.append(last_flight)
+
+            # Set new key
+            last_flight = flight
+            last_flight_key = flight.get_key()
+
+        else:
+            # NOTE: If last flight key is the current flight key, continue adding to passenger_list
+            # Append each passenger in this flight's passenger list to last_flight passenger list
+            for passenger in flight.passenger_list:
+                last_flight.add_passenger(passenger)
+            
+    # Output Last Flight
+    if last_flight_key == flight.get_key():
+        reduced_data.append(last_flight)
+    
+    # Write reduced data to file
+    with open("reduced.csv", "w") as f:
+        for flight in reduced_data:
+            f.write(str(flight)+"\n")
 
 
 # Misc functions
 def cls():
     """Clears console - useful for debugging/testing"""
     os.system("cls" if os.name == "nt" else "clear")
-
+    
 
 def get_airports(data):
     """Data Wrangling to match airport_code to corresponding airport/lat/long
@@ -281,7 +346,31 @@ def main():
     #     f"{data_dir}/Top30_airports_LatLong.csv",
     #     names=["airport", "airport_code", "lat", "long"],
     # )
-    fid_pool, pid_pool = mapper(passenger_data)
+
+    mapper(passenger_data)
+    # Load flights into dataframe
+    flights = pd.read_csv("flights.csv", header = None)
+    # Sort mapped data by (flight id/airport) key
+    sort_mapped_data(flights)
+    # Load sorted dataframe into dataframe
+    sorted_data = pd.read_csv("sorted_dataframe.csv", header = None)
+    # Reduce dataframe
+    reduce(sorted_data)
+
+
+    # Load in reduced data
+    # with open("reduced.csv", "r") as f:
+    #     # Read file as string
+    #     data = f.read()
+    #     # Split string into list of lines
+    #     data = data.split("\n")
+    #     # Remove empty lines
+    #     data = [line for line in data if line]
+    #     # Reduce data
+    #     reduce(data)
+
+
+
     # print(airport_data.info())
     # airports = get_airports(airport_data)
     # print(*airports.items(), sep="\n")

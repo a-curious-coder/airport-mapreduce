@@ -1,6 +1,6 @@
 # Map Reduce for Airport data
 
-## Setup
+# Setup
 
 Setup your virtual environment
 
@@ -32,6 +32,30 @@ Open terminal in working directory and run project
 ```
 python main.py
 ```
+
+# Data-set Description
+
+## AComp_Passenger_data_no_error.csv
+
+| Column Header   |          Format |
+| :-------------- | --------------: |
+| passenger_id    |      XXXnnnnXXn |
+| flight_id       |        XXXnnnnX |
+| from_airport    |             XXX |
+| to_airport      |             XXX |
+| departure_time  | n (epochs time) |
+| flight_duration |               n |
+
+## Top30_airports_LatLong.csv
+
+| Column Header | Format |
+| :------------ | -----: |
+| airport       |      X |
+| airport_code  |    XXX |
+| lat           |    n.n |
+| long          |    n.n |
+
+# Tasks
 
 ## Task 1
 
