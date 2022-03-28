@@ -1,7 +1,23 @@
+"""Flight object"""
+
+
 class Flight:
-    """Flight class"""
+    """Flight class
+    Attributes:
+        flight_id (str): flight id
+        from_airport (str): from airport
+        to_airport (str): to airport
+        depart_time (str): departure time
+        total_flight_time (int): total flight time
+        passenger_list (list): list of passengers
+        """
 
     def __init__(self, flight_data):
+        """Initialise flight object
+
+        Args:
+            flight_data (list): list of flight dat
+        """
         (
             flight_from,
             self.to_airport,
@@ -23,7 +39,7 @@ class Flight:
 
         # Create list with flight attribute values
         results = [
-            self.get_key(),
+            self.get_flight_key(),
             self.to_airport,
             self.depart_time,
             str(self.total_flight_time),
@@ -37,11 +53,15 @@ class Flight:
             results += self.passenger_list
         # List to tab separated string
         return ",".join(results)
-        # return str(results)
 
     def __len__(self):
+        """Returns length of passengers for this flight
+
+        Returns:
+            int: length of passengers
+        """
         return 5 + len(self.passenger_list)
-    
+
     def add_passenger(self, passenger):
         """Add passenger to flight
 
@@ -51,19 +71,11 @@ class Flight:
         self.passenger_list.append(passenger)
         return self.passenger_list
 
-    def get_key(self):
+    def get_flight_key(self):
         """get key for flight data
 
         Returns:
-            str: key
+            str: flight key
         """
         key = self.flight_id + "_" + self.from_airport
         return key
-
-    def get_clean_passenger_list(self):
-        """Removes duplicate passengers
-
-        Returns:
-            list: clean passenger list
-        """
-        return list(set(self.passenger_list))

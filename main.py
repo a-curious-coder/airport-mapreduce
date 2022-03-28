@@ -1,121 +1,13 @@
 #!/usr/bin/env python3
-
-import operator
 import os
-
+import re
+import operator
 import pandas as pd
+
 from dotenv import load_dotenv
-from pandas.api.types import CategoricalDtype
+from distutils.util import strtobool
 
-from flight import Flight
-
-
-def mapper(data):
-    """Reformat and map flight data
-    Args:
-        data (pd.Dataframe): passenger data with headers
-    """
-
-    print("[*]\tMapper")
-    # Convert entire dataframe to a string, each row separated by a new line
-    passenger_data_strings = data.to_string(
-        header=False, index=False, index_names=False
-    ).split("\n")
-
-    # Separate each value in each row by a comma
-    passenger_data = [",".join(row.split()) for row in passenger_data_strings]
-
-    # Declare flight list
-    flights = []
-
-    for row in passenger_data:
-        # Convert this row in the passenger_data to list of variables as strings
-        elements = row.split(",")
-        # Move Passenger ID from the beginning of the list to the last place in the list
-        elements = elements[-5:] + elements[:-5]
-        # Merge flight id with airport code
-        flight_data = [elements[0] + "_" + elements[1]]
-        # Appends elements from row position 2 to flight_data
-        flight_data.extend(elements[2:])
-        # Convert transformed data back to string with elements separated by commas
-        row = ",".join(flight_data)
-        # Initialise Flight object
-        flight = Flight(row)
-        
-        # Print Mapper Output for this row
-        flights.append(flight)
-
-    # Write each flight to a mapped_data.csv file
-    with open("mapped_data.csv", "w") as f:
-        for flight in flights:
-            f.write(str(flight) + "\n")
-
-
-def sort_mapped_data(mapped_data):
-    """Sort mapped dataframe
-
-    Args:
-        mapped_data (pd.DataFrame): Mapped flight data
-    """
-    print("[*]\tSorter")
-    order = CategoricalDtype(
-        mapped_data[0].unique().sort(), 
-        ordered=True
-    )
-    # Convert mapped_data key to categorical dtype
-    mapped_data[0] = mapped_data[0].astype(order)
-    # Sort mapped dataframe by key
-    mapped_data.sort_values(0, inplace = True, ascending = True)
-    # Save sorted dataframe to csv file
-    mapped_data.to_csv("sorted_dataframe.csv", index=False, header = False)
-
-
-def reduce(sorted_data):
-    """Condense flight_id
-
-    Args:
-        sorted_data (pd.DataFrame): mapped data
-    """
-    print("[*]\tReduce")
-    last_flight = None
-    last_flight_key = None
-    reduced_data = []
-
-    # Dataframe to string of comma separated values
-    sorted_data_strings = sorted_data.to_string(
-        header=False, index=False, index_names=False
-    ).split("\n")
-    sorted_data_strings = [','.join(ele.split()) for ele in sorted_data_strings]
-
-    # For flight in mapped data
-    for line in sorted_data_strings:
-        # Get flight from line
-        flight = Flight(line)
-        # Check if last flight is the current flight.key
-        if last_flight_key != flight.get_key():
-            # If last_flight_key is not current.key, output the previous key
-            if last_flight_key:
-                # Output to stdout
-                reduced_data.append(last_flight)
-
-            # Set new key
-            last_flight = flight
-            last_flight_key = flight.get_key()
-
-        else:
-            # NOTE: If last flight key is the current flight key, continue adding to passenger_list
-            # Append each passenger in this flight's passenger list to last_flight passenger list
-            for passenger in flight.passenger_list:
-                last_flight.add_passenger(passenger)
-            
-    # Output Last Flight
-    if last_flight_key == flight.get_key():
-        reduced_data.append(last_flight)
-    
-    # Write reduced data to file
-    with open("reduced.csv", "w") as f:
-        for flight in reduced_data:
-            f.write(str(flight)+"\n")
+from mapreduce import mapper, sorter, reducer
 
 
 # Tasks
@@ -142,7 +34,7 @@ def get_total_number_of_flights_from_airport(reduced_data, airports):
     from_count = sorted(from_count.items(), key=lambda x: x[1], reverse=True)
     
     # Save results to file
-    with open("from_count.csv", "w") as f:
+    with open("from_count.csv", "w", encoding="utf-8") as f:
         for key, value in from_count:
             f.write(f"{key},{value}\n")
     
@@ -175,10 +67,49 @@ def get_passenger_with_most_flights(data):
     passengers = sorted(passengers.items(), key=lambda x: x[1], reverse=True)
 
     # Save results to file
-    with open("passengers.csv", "w") as f:
+    with open("passengers.csv", "w", encoding="utf-8") as f:
         for key, value in passengers:
             f.write(f"{key},{value}\n")
     return max_passenger, flight_count
+
+
+def test_mapreduce():
+    """Test mapreduce functions"""
+    # Clear console
+    cls()
+    # Load environment variables from .env
+    load_dotenv()
+    # Initialise mapreduce file names
+    mapper_data_name = os.getenv("MAPPED_DATA")
+    sorted_data_name = os.getenv("SORTED_DATA")
+    reduced_data_name = os.getenv("REDUCED_DATA")
+    # Load user specified data directory
+    data_dir = os.getenv("DATA_DIR")
+    # Load passenger data with custom headers
+    passenger_data = pd.read_csv(
+        f"{data_dir}/AComp_Passenger_data_no_error.csv",
+        names=[
+            "passenger_id",
+            "flight_id",
+            "from_airport",
+            "to_airport",
+            "departure_time",
+            "flight_duration",
+        ],
+    )
+
+    # Map passenger data to flights
+    mapper._map(passenger_data, mapper_data_name)
+
+    # Load flights into dataframe
+    flights = pd.read_csv(mapper_data_name, header=None)
+    # Sort mapped data by (flight id/airport) key
+    sorter._sort(flights, sorted_data_name)
+
+    # Load sorted dataframe into dataframe
+    sorted_data = pd.read_csv(sorted_data_name, header=None)
+    # Reduce dataframe
+    reducer._reduce(sorted_data, reduced_data_name)
 
 
 # Misc functions
@@ -203,14 +134,14 @@ def get_airports(data):
     return airports
 
 
-def load_reduced_data():
+def load_reduced_data(file_name):
     """Load in reduced data from csv file
     Returns:
         pd.DataFrame: reduced data
     """
     reduced_data = []
-    with open("reduced.csv", "r") as f:
-        data = f.readlines()
+    with open(file_name, "r", encoding="utf-8") as file:
+        data = file.readlines()
 
     for line in data:
         elements = line.strip().split("\t", 4)
@@ -225,34 +156,20 @@ def main():
     cls()
     # Load environment variables from .env
     load_dotenv()
+    use_hadoop_output = strtobool(os.getenv("HADOOP_DATA"))
+    reduced_data_name = os.getenv("HADOOP_OUTPUT") \
+        if use_hadoop_output  \
+        else os.getenv("REDUCED_DATA")
     # Load user specified data directory
     data_dir = os.getenv("DATA_DIR")
 
-    # Load passenger data with custom headers
-    passenger_data = pd.read_csv(
-        f"{data_dir}/AComp_Passenger_data_no_error.csv",
-        names=[
-            "passenger_id",
-            "flight_id",
-            "from_airport",
-            "to_airport",
-            "departure_time",
-            "flight_duration",
-        ],
-    )
-    # Map passenger data to flights
-    mapper(passenger_data)
-    # Load flights into dataframe
-    flights = pd.read_csv("mapped_data.csv",header=None)
-    # Sort mapped data by (flight id/airport) key
-    sort_mapped_data(flights)
-    # Load sorted dataframe into dataframe
-    sorted_data = pd.read_csv("sorted_dataframe.csv",header=None)
-    # Reduce dataframe
-    reduce(sorted_data)
+    test_mapreduce()
     # Read reduced flight
-    reduced_data = load_reduced_data()
-
+    reduced_data = load_reduced_data(reduced_data_name)
+    # Remove escape characters
+    reduced_data = [[entry.replace("\\t", "") for entry in flight] for flight in reduced_data]
+    
+    # Load airports
     airport_data = pd.read_csv(
         f"{data_dir}/Top30_airports_LatLong.csv",
         names=["airport", "airport_code", "lat", "long"],
@@ -260,9 +177,11 @@ def main():
 
     airports = get_airports(airport_data)
 
+    # Task 1
     from_count = get_total_number_of_flights_from_airport(reduced_data, airports)
-    print(*from_count, sep = "\n")
+    print(*from_count, sep="\n")
 
+    # Task 2
     max_passenger, flight_count = get_passenger_with_most_flights(reduced_data)
     print(f"{max_passenger} has had the most number of flights ({flight_count})")
 

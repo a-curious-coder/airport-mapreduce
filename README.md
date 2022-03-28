@@ -55,8 +55,70 @@ python main.py
 | lat           |    n.n |
 | long          |    n.n |
 
+# Hadoop MapReduce
+
+Using OSX, I downloaded and installed hadoop via brew
+
+```bash
+brew install hadoop
+```
+
+I executed the following command on OSX. Hadoop splits the input data into partitions and runs them through the map-reduce scripts I've made on separate threads, reducing runtime and the data.
+
+```bash
+hadoop jar <hadoop streaming jar file>
+-input AComp_Passenger_data_no_error.csv
+-mapper "mapreduce/mapper.py"
+-combiner "mapreduce/sorter.py"
+-reducer "mapreduce/reducer.py"
+-output reduced
+```
+
 # Tasks
 
+<details>
+<summary>Task 1</summary>
+
+| Airport (From) | Flights |
+| :------------- | ------: |
+| PEK            |      70 |
+| FRA            |      59 |
+| LAS            |      53 |
+| DFW            |      37 |
+| DEN            |      36 |
+| MIA            |      35 |
+| DXB            |      30 |
+| BKK            |      23 |
+| SFO            |      23 |
+| HKG            |      20 |
+| FCO            |      20 |
+| SIN            |      17 |
+| LHR            |      16 |
+| AMS            |      14 |
+| MAD            |      14 |
+| LAX            |      13 |
+| CAN            |      13 |
+| PVG            |       7 |
+| ATL            |       0 |
+| ORD            |       0 |
+| HND            |       0 |
+| CDG            |       0 |
+| CGK            |       0 |
+| JFK            |       0 |
+| PHX            |       0 |
+| IAH            |       0 |
+| CLT            |       0 |
+| MUC            |       0 |
+| KUL            |       0 |
+| IST            |       0 |
+
+</details>
+
+<details>
+<summary>Task 2</summary>
+UES9151GS5 has had the most number of flights (25)
+</details>
+<!--
 ## Task 1
 
 > Determine the number of flights from each airport; include a list of any airports not used.
@@ -102,9 +164,10 @@ Unused airports
 
 ### Results
 
-```bash
+````bash
 -------------------------
 Highest Airmile passenger
 -------------------------
 UES9151GS5
-```
+``` -->
+````
