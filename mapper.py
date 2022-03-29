@@ -2,10 +2,11 @@
 """ Mapper function """
 import sys
 import pandas as pd
-from mapreduce.flight import Flight
+import sorter
+from flight import Flight
 
 
-def _map(data, file_name="mapped_data.csv", hadoop=False):
+def _map(data, file_name="mapped_data.csv", hadoop_mode=False):
     """Reformat and map flight data
     Args:
         data (pd.Dataframe): passenger data with headers
@@ -43,9 +44,11 @@ def _map(data, file_name="mapped_data.csv", hadoop=False):
     with open(file_name, "w", encoding="utf-8") as file:
         for flight in flights:
             file.write(str(flight) + "\n")
-    if hadoop:
-        # Write each flight to stdout
-        print(*flights, sep="\n")
+
+    # Load flights into dataframe
+    flights = pd.read_csv(file_name, header=None)
+    # Sort mapped data by (flight id/airport) key
+    sorter._sort(flights, file_name=file_name, hadoop_mode=hadoop_mode)
 
 
 def main():
@@ -53,7 +56,7 @@ def main():
     # Read system input of file to dataframe
     data = pd.DataFrame(data=sys.stdin.read().splitlines())
     # Execute mapper
-    _map(data, hadoop=True)
+    _map(data, hadoop_mode=True)
 
 
 if __name__ == "__main__":

@@ -2,10 +2,10 @@
 """ Reduce sorted mapped data """
 import sys
 import pandas as pd
-from mapreduce.flight import Flight
+from flight import Flight
 
 
-def _reduce(sorted_flights, file_name="reduced_data.csv", hadoop=False):
+def _reduce(sorted_flights, file_name="reduced_data.csv", hadoop_mode=False):
     """Condense flight_id
 
     Args:
@@ -48,7 +48,8 @@ def _reduce(sorted_flights, file_name="reduced_data.csv", hadoop=False):
     with open(file_name, "w", encoding="utf-8") as file:
         for flight in reduced_data:
             file.write(str(flight)+"\n")
-    if hadoop:
+
+    if hadoop_mode:
         # Write reduced data to stdout
         print(*reduced_data, sep="\n")
 
@@ -58,7 +59,7 @@ def main():
     # Read system input of file to dataframe
     data = pd.DataFrame(data=sys.stdin.read().splitlines())
     # Execute mapper
-    _reduce(data, hadoop=True)
+    _reduce(data, hadoop_mode=True)
 
 
 if __name__ == "__main__":

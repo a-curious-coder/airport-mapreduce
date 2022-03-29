@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import os
-import re
 import operator
 import pandas as pd
 
 from dotenv import load_dotenv
 from distutils.util import strtobool
 
-from mapreduce import mapper, sorter, reducer
+import mapper
+import reducer
 
 
 # Tasks
@@ -32,18 +32,18 @@ def get_total_number_of_flights_from_airport(reduced_data, airports):
 
     # order from_count in descending order
     from_count = sorted(from_count.items(), key=lambda x: x[1], reverse=True)
-    
+
     # Save results to file
     with open("from_count.csv", "w", encoding="utf-8") as f:
         for key, value in from_count:
             f.write(f"{key},{value}\n")
-    
+
     return from_count
 
 
 def get_passenger_with_most_flights(data):
     """Get passenger with most flights (Task 2)
-    
+
     Args:
         data (pd.DataFrame): reduced data
     Return:
@@ -68,6 +68,7 @@ def get_passenger_with_most_flights(data):
 
     # Save results to file
     with open("passengers.csv", "w", encoding="utf-8") as f:
+        f.write("passenger,flights\n")
         for key, value in passengers:
             f.write(f"{key},{value}\n")
     return max_passenger, flight_count
@@ -75,13 +76,13 @@ def get_passenger_with_most_flights(data):
 
 def test_mapreduce():
     """Test mapreduce functions"""
+
     # Clear console
     cls()
     # Load environment variables from .env
     load_dotenv()
     # Initialise mapreduce file names
     mapper_data_name = os.getenv("MAPPED_DATA")
-    sorted_data_name = os.getenv("SORTED_DATA")
     reduced_data_name = os.getenv("REDUCED_DATA")
     # Load user specified data directory
     data_dir = os.getenv("DATA_DIR")
@@ -100,16 +101,10 @@ def test_mapreduce():
 
     # Map passenger data to flights
     mapper._map(passenger_data, mapper_data_name)
-
-    # Load flights into dataframe
-    flights = pd.read_csv(mapper_data_name, header=None)
-    # Sort mapped data by (flight id/airport) key
-    sorter._sort(flights, sorted_data_name)
-
     # Load sorted dataframe into dataframe
-    sorted_data = pd.read_csv(sorted_data_name, header=None)
+    mapped_data = pd.read_csv(mapper_data_name, header=None)
     # Reduce dataframe
-    reducer._reduce(sorted_data, reduced_data_name)
+    reducer._reduce(mapped_data, reduced_data_name)
 
 
 # Misc functions
@@ -156,8 +151,8 @@ def main():
     cls()
     # Load environment variables from .env
     load_dotenv()
-    use_hadoop_output = strtobool(os.getenv("HADOOP_DATA"))
-    reduced_data_name = os.getenv("HADOOP_OUTPUT") \
+    use_hadoop_output = strtobool(os.getenv("USE_HADOOP_OUTPUT"))
+    reduced_data_name = os.getenv("HADOOP_OUTPUT_DIR") \
         if use_hadoop_output  \
         else os.getenv("REDUCED_DATA")
     # Load user specified data directory
@@ -168,7 +163,7 @@ def main():
     reduced_data = load_reduced_data(reduced_data_name)
     # Remove escape characters
     reduced_data = [[entry.replace("\\t", "") for entry in flight] for flight in reduced_data]
-    
+
     # Load airports
     airport_data = pd.read_csv(
         f"{data_dir}/Top30_airports_LatLong.csv",

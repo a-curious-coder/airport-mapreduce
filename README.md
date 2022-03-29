@@ -63,16 +63,33 @@ Using OSX, I downloaded and installed hadoop via brew
 brew install hadoop
 ```
 
+```bash
+hadoop fs -put data/AComp_Passenger_data_no_error.csv
+```
+
+```bash
+rm -rf reduced
+```
+
 I executed the following command on OSX. Hadoop splits the input data into partitions and runs them through the map-reduce scripts I've made on separate threads, reducing runtime and the data.
 
 ```bash
-hadoop jar <hadoop streaming jar file>
--input AComp_Passenger_data_no_error.csv
--mapper "mapreduce/mapper.py"
--combiner "mapreduce/sorter.py"
--reducer "mapreduce/reducer.py"
+hadoop jar <hadoop streaming jar file> \
+-input AComp_Passenger_data_no_error.csv \
+-mapper "mapper.py" \
+-combiner "sorter.py" \
+-reducer "reducer.py" \
 -output reduced
 ```
+
+<!-- MAC
+hadoop jar /usr/local/Cellar/hadoop/3.3.2/libexec/share/hadoop/tools/lib/hadoop-streaming-3.3.2.jar \
+-input AComp_Passenger_data_no_error.csv \
+-mapper "mapreduce/mapper.py" \
+-combiner "mapreduce/sorter.py" \
+-reducer "mapreduce/reducer.py" \
+-output reduced
+-->
 
 # Tasks
 

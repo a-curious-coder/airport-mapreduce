@@ -7,4 +7,4 @@ __pycache__/
 # Files
 .flake8
 .isort.cfg
-mapper1.txt
+*.DS_Store
