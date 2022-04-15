@@ -79,3 +79,15 @@ class Flight:
         """
         key = self.flight_id + "_" + self.from_airport
         return key
+
+
+def main():
+    """Main function"""
+    flight = Flight("SQU6245R_DEN,FRA,1420564460,1049,UES9151GS5")
+    print(flight)
+    flight = Flight("SQU6245R_DEN,FRA,1420564460,1049,test1,test2,test3")
+    print(flight)
+
+
+if __name__ == "__main__":
+    main()

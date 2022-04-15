@@ -2,17 +2,18 @@
 """ Mapper function """
 import sys
 import pandas as pd
-import sorter
 from flight import Flight
+import multiprocessing
+import sorter
 
 
-def _map(data, file_name="mapped_data.csv", hadoop_mode=False):
+def _map(data, ret=None, procnum=-1, file_name="mapped_data.csv", hadoop_mode=False):
     """Reformat and map flight data
     Args:
         data (pd.Dataframe): passenger data with headers
     """
 
-    # print("[*]\tMapper")
+    print("[*]\tMapper")
     # Convert entire dataframe to a string, each row separated by a new line
     passenger_data = data.to_string(
         header=False, index=False, index_names=False
@@ -40,15 +41,31 @@ def _map(data, file_name="mapped_data.csv", hadoop_mode=False):
         # Print Mapper Output for this row
         flights.append(flight)
 
-    # Write each flight to a mapped_data.csv file
-    with open(file_name, "w", encoding="utf-8") as file:
-        for flight in flights:
-            file.write(str(flight) + "\n")
+    if ret is None:
+        # Write each flight to a mapped_data.csv file
+        with open(file_name, "w", encoding="utf-8") as file:
+            for flight in flights:
+                file.write(str(flight) + "\n")
+        flights = pd.read_csv(file_name, header=None)
+        # # Sort mapped data by (flight id/airport) key
+        flights = sorter._sort(flights, file_name=file_name, hadoop_mode=hadoop_mode)
+    if ret is not None:
+        ret[procnum] = flights
 
-    # Load flights into dataframe
-    flights = pd.read_csv(file_name, header=None)
-    # Sort mapped data by (flight id/airport) key
-    sorter._sort(flights, file_name=file_name, hadoop_mode=hadoop_mode)
+
+def multithread_map(partitions, map_results):
+    jobs = []
+
+    for i, partition in enumerate(partitions):
+        p = multiprocessing.Process(target=_map, args=(partition,
+                                                        map_results, i))
+        jobs.append(p)
+        p.start()
+
+    for p in jobs:
+        p.join()
+    for p in jobs:
+        p.terminate()
 
 
 def main():
