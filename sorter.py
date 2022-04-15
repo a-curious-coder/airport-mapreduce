@@ -26,7 +26,7 @@ def _sort(data, file_name="sorted_data.csv", hadoop_mode=False, ret=None, procnu
     if hadoop_mode:
         # Write sorted dataframe to stdout
         print(data.to_string(index=False, header=False))
-    print(f"Sorted Length: {len(data)}")
+    # print(f"Sorted Length: {len(data)}")
     if ret is not None:
         ret[procnum] = data
     else:

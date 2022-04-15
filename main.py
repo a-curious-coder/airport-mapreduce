@@ -130,6 +130,44 @@ def multi_thread_mapreduce():
     # Apply multithreading reduce function to each map_result
     reducer.multithread_reduce(map_results, reduce_results)
 
+    # From 4 to 2
+    partitions = os.cpu_count()
+    while partitions > 0:
+        # Right bit shift to halve the value to 0
+        partitions = partitions >> 1
+        # Holds processed reduce results
+        temp = reduce_results
+        print(f"Length of reduce_results = {len(reduce_results)}")
+        # Initialise empty list of length equal to number of new partitions
+        reduce_results = multiprocessing.Manager().list([None] * partitions)
+        # For each pair of lists in temp
+        for procnum, j in enumerate(zip(range(0, len(reduce_results)*2, 2), range(1, len(reduce_results)*2+1, 2))):
+            list_1 = j[0]
+            list_2 = j[1]
+            # print(f"Combining: List[{list_1}] with list[{list_2}]")
+            # length of temp[list_1] + length of temp[list_2]
+            length = len(temp[list_1]) + len(temp[list_2])
+            # print temp[list_1] and temp[list_2]
+            print(f"Length of {len(temp[list_1])} + {len(temp[list_2])} = {length}")
+            lists = temp[list_1:list_2+1]
+            # print sum of length of each list
+            print(f"Length of lists = {sum(len(result) for result in lists)}")
+            combine(lists, reduce_results, procnum)
+        print(f"Length of reduce_results {len(reduce_results)}  (combined)")
+        if i != 1:
+            print(len(reduce_results))
+            reducer.multithread_reduce(reduce_results, reduce_results)
+            print("reduced...")
+            print(len(reduce_results))
+        # Temp
+        count = 0
+        for fs in reduce_results:
+            for f in fs:
+                count += len(f.passenger_list)
+        print(f"Flights: {count}")
+
+
+
     length = sum(len(result) for result in reduce_results)
     print(f"Reduction overall size: {length}")
 
@@ -160,6 +198,20 @@ def multi_thread_mapreduce():
     print(f"Total flights: {passenger_count}")
     # Final reduce of reduced data
     reducer._reduce(reduced)
+
+
+def combine(data, ret, procnum):
+    """Combine results from map and reduce
+
+    Args:
+        ret (list): list of lists of results
+    """
+    # sum of lengths of lists in data
+    length = sum(len(result) for result in data)
+    print(f"overall should be: {length}")
+    ret[procnum] = [item for sublist in data for item in sublist]
+    print(len(ret[procnum]))
+    print("oh")
 
 
 def unique_passengers(data):
