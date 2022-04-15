@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Sorter function for mapped data"""
 import sys
+
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """ Mapper function """
-import sys
-import pandas as pd
-from flight import Flight
 import multiprocessing
+import sys
+
+import pandas as pd
+
 import sorter
+from flight import Flight
 
 
 def _map(data, ret=None, procnum=-1, file_name="mapped_data.csv", hadoop_mode=False):
@@ -17,6 +19,7 @@ def _map(data, ret=None, procnum=-1, file_name="mapped_data.csv", hadoop_mode=Fa
         print("[*]\tSingle Thread Mappper")
     else:
         print("[*]\tMapper\tThread " + str(procnum))
+
     # Convert entire dataframe to a string, each row separated by a new line
     passenger_data = data.to_string(
         header=False, index=False, index_names=False
@@ -52,7 +55,7 @@ def _map(data, ret=None, procnum=-1, file_name="mapped_data.csv", hadoop_mode=Fa
         flights = pd.read_csv(file_name, header=None)
         # # Sort mapped data by (flight id/airport) key
         flights = sorter._sort(flights, file_name=file_name, hadoop_mode=hadoop_mode)
-    if ret is not None:
+    else:
         ret[procnum] = flights
 
 

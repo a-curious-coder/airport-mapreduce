@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-import os
-import operator
-import pandas as pd
 import multiprocessing
-from dotenv import load_dotenv
+import operator
+import os
 from distutils.util import strtobool
+
 import numpy as np
-import mapper
+import pandas as pd
+from dotenv import load_dotenv
+
 import combiner
+import flight
+import mapper
 import reducer
 import sorter
-import flight
 
-from operator import itemgetter
 
 # Tasks
 def get_total_number_of_flights_from_airport(reduced_data, airports):
     """Get total number of flights from airport (Task 1)
-    
+
     Args:
         reduced_data (pd.DataFrame): reduced data
         airports (list): list of airports
@@ -78,6 +79,7 @@ def get_passenger_with_most_flights(data):
     return max_passenger, flight_count
 
 
+# Get/Load data
 def get_passenger_data():
     """ Load passenger data from csv file
     Returns:
@@ -96,85 +98,35 @@ def get_passenger_data():
     )
 
 
-def multi_thread_mapreduce():
-    # Load passenger_data
-    passenger_data = get_passenger_data()
-    dataframes = []
-
-    for pid in passenger_data['passenger_id'].unique():
-        # create temporary dataframe for this id
-        temp_data = passenger_data[passenger_data['passenger_id'] == pid]
-        # if flight_id in temp_data occurs more than once, delete row
-        temp_data = temp_data.drop_duplicates(subset='flight_id', keep='first')
-        # append temp_data to dataframes
-        dataframes.append(temp_data)
-
-    # concatenate dataframes
-    passenger_data = pd.concat(dataframes)
-
-    passenger_data.to_csv('final.csv', index=False)
-
-    # Split passenger_data into processor count partitions
-    partitions = np.array_split(passenger_data, os.cpu_count())
-
-    # Initialise empty list of length equal to number of partitions
-    map_results = multiprocessing.Manager().list([None] * len(partitions))
-
-    # Apply mapper function to each partition
-    mapper.multithread_map(partitions, map_results)
+def get_airport_data():
+    """ Loads airport data from csv file
+    Returns:
+        pd.DataFrame: airport data
+    """
+    # Load airports
+    return pd.read_csv(
+        f"{DATA_DIR}/Top30_airports_LatLong.csv",
+        names=["airport", "airport_code", "lat", "long"],
+    )
 
 
-    # Reduce all data partitions
-    # Initialise empty list of length equal to number of partitions
-    reduce_results = multiprocessing.Manager().list([None] * len(map_results))
-    # Apply multithreading reduce function to each map_result
-    reducer.multithread_reduce(map_results, reduce_results)
+def get_reduced_data(file_name):
+    """Load in reduced data from csv file
+    Returns:
+        pd.DataFrame: reduced data
+    """
+    reduced_data = []
+    with open(file_name, "r", encoding="utf-8") as file:
+        data = file.readlines()
 
-    # Partition count is same as cpu core count
-    partitions = os.cpu_count()
-    while partitions > 1:
-        # Right bit shift to halve the value each loop until 0
-        partitions = partitions >> 1
-        # Stores processed reduce results as backup
-        temp = reduce_results
-        # print(f"Length of reduce_results = {len(reduce_results)}")
-        # Initialise empty list of length equal to number of new partitions
-        reduce_results = multiprocessing.Manager().list([None] * partitions)
-        # For each pair of lists in temp
-        combiner.multithread_combine(temp, reduce_results)
+    for line in data:
+        elements = line.strip().split("\t", 4)
+        reduced_data.append(elements)
 
-        # print(f"Length of reduce_results {len(reduce_results)}  (combined)")
-        if partitions != 1:
-            reducer.multithread_reduce(reduce_results, reduce_results)
-        # Temp
-        count = 0
-        for fs in reduce_results:
-            for f in fs:
-                count += len(f.passenger_list)
-
-    length = sum(len(result) for result in reduce_results)
-    print(f"Reduction overall size: {length}")
-    # Combine each list in reduce_results
-    reduced = [str(item) for sublist in reduce_results for item in sublist]
-    # Convert reduced to dataframe
-    reduced = pd.DataFrame(reduced)
-    # Sort reduced data in alphabetical order for airport/flight
-    reduced = sorter._sort(reduced)
-    # Convert sorted  to list
-    reduced = reduced[0].tolist()
-    # Convert list of flight strings to flight objects
-    reduced = [flight.Flight(row) for row in reduced]
-    # Final reduce of combined reduced partitions
-    reducer._reduce(reduced)
+    return reduced_data
 
 
-def unique_passengers(data):
-    count = [item.passenger_list for item in data]
-    print(len(count))
-    count = list({j for sub in count for j in sub})
-    print(f"Passengers: {len(count)}")
-
-
+# MapReduce functions
 def single_thread_mapreduce():
     """Test mapreduce functions"""
     # Load environment variables from .env
@@ -192,6 +144,54 @@ def single_thread_mapreduce():
     # Reduce dataframe
     reducer._reduce(mapped_data, file_name=reduced_data_name)
 
+
+def multi_thread_mapreduce():
+    # Load passenger_data
+    passenger_data = get_passenger_data()
+
+    # Split passenger_data into processor count partitions
+    partitions = np.array_split(passenger_data, os.cpu_count())
+
+    # Initialise empty list of length equal to number of partitions
+    map_results = multiprocessing.Manager().list([None] * len(partitions))
+
+    # Apply mapper function to each partition
+    mapper.multithread_map(partitions, map_results)
+
+    # NOTE: Reduce all data partitions
+    # Initialise empty list of length equal to number of partitions
+    reduce_results = multiprocessing.Manager().list([None] * len(map_results))
+    # Apply multithreading reduce function to each map_result
+    reducer.multithread_reduce(map_results, reduce_results)
+
+    # Partition count is same as cpu core count
+    partitions = os.cpu_count()
+    while partitions > 1:
+        # Right bit shift to halve the value each loop until 0
+        partitions = partitions >> 1
+        # Stores processed reduce results as backup
+        temp = reduce_results
+        # Initialise empty list of length equal to number of new partitions
+        reduce_results = multiprocessing.Manager().list([None] * partitions)
+        # For each pair of lists in temp
+        combiner.multithread_combine(temp, reduce_results)
+
+        if partitions != 1:
+            reducer.multithread_reduce(reduce_results, reduce_results)
+
+    # NOTE: Final reduce on last data partition
+    # Combine each list in reduce_results
+    reduced = [str(item) for sublist in reduce_results for item in sublist]
+    # Convert reduced to dataframe
+    reduced = pd.DataFrame(reduced)
+    # Sort reduced data in alphabetical order for airport/flight
+    reduced = sorter._sort(reduced)
+    # Convert sorted  to list
+    reduced = reduced[0].tolist()
+    # Convert list of flight strings to flight objects
+    reduced = [flight.Flight(row) for row in reduced]
+    # Final reduce of combined reduced partitions
+    reducer._reduce(reduced)
 
 
 # Misc functions
@@ -213,30 +213,15 @@ def get_airports(data):
     return {row["airport_code"]: [row["airport"], row["lat"], row["long"]] for _, row in data.iterrows()}
 
 
-def load_reduced_data(file_name):
-    """Load in reduced data from csv file
-    Returns:
-        pd.DataFrame: reduced data
-    """
-    reduced_data = []
-    with open(file_name, "r", encoding="utf-8") as file:
-        data = file.readlines()
-
-    for line in data:
-        elements = line.strip().split("\t", 4)
-        reduced_data.append(elements)
-
-    return reduced_data
-
-
 def main():
     """Main function"""
     global DATA_DIR
-    global MULTITHREAD
     # Clear console
     cls()
     # Load environment variables from .env
     load_dotenv()
+    # Initialise settings from environment variables
+    multithreading = strtobool(os.getenv("MULTITHREAD"))
     use_hadoop_output = strtobool(os.getenv("USE_HADOOP_OUTPUT"))
     reduced_data_name = os.getenv("HADOOP_OUTPUT_DIR") \
         if use_hadoop_output  \
@@ -244,32 +229,27 @@ def main():
     # Load user specified data directory
     DATA_DIR = os.getenv("DATA_DIR")
 
-    if MULTITHREAD := strtobool(os.getenv("MULTITHREAD")):
+    if multithreading:
         print("[*]\tMulti-threaded")
         multi_thread_mapreduce()
     else:
         print("[*]\tSingle-threaded")
         single_thread_mapreduce()
-    return
-    # Read reduced flight
-    reduced_data = load_reduced_data(reduced_data_name)
-    # Remove escape characters
-    reduced_data = [[entry.replace("\\t", "") for entry in flight] for flight in reduced_data]
 
-    # Load airports
-    airport_data = pd.read_csv(
-        f"{DATA_DIR}/Top30_airports_LatLong.csv",
-        names=["airport", "airport_code", "lat", "long"],
-    )
-
+    # Get reduced flight
+    reduced = get_reduced_data(reduced_data_name)
+    # Get airport data
+    airport_data = get_airport_data()
+    # Get airports from airport_data
     airports = get_airports(airport_data)
+
     # Task 1
-    from_count = get_total_number_of_flights_from_airport(reduced_data, airports)
+    from_count = get_total_number_of_flights_from_airport(reduced, airports)
     print(*from_count, sep="\n")
 
     # Task 2
-    max_passenger, flight_count = get_passenger_with_most_flights(reduced_data)
-    print(f"{max_passenger} has had the most number of flights ({flight_count})")
+    max_passenger, flight_count = get_passenger_with_most_flights(reduced)
+    print(f"{max_passenger} has the most number of flights ({flight_count})")
 
 
 if __name__ == "__main__":

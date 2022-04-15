@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """ Reduce sorted mapped data """
-import sys
-import pandas as pd
 import multiprocessing
+import sys
+
+import pandas as pd
+
 from flight import Flight
 
 
@@ -76,11 +78,16 @@ def _reduce(sorted_flights, ret=None, procnum=-1, file_name="reduced_data.csv", 
         ret[procnum] = reduced_data
 
 
-def multithread_reduce(mapped_data, reduce_results):
+def multithread_reduce(mapped_data, ret):
+    """ Multithreaded Reduce
+    Args:
+        mapped_data (list): list of mapped/semi-reduced data
+        ret (list): list of reduce results
+    """
     jobs = []
 
     for i, partition in enumerate(mapped_data):
-        p = multiprocessing.Process(target=_reduce, args=(partition, reduce_results, i))
+        p = multiprocessing.Process(target=_reduce, args=(partition, ret, i))
         jobs.append(p)
         p.start()
 
