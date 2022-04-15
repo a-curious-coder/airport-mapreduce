@@ -7,9 +7,11 @@ from dotenv import load_dotenv
 from distutils.util import strtobool
 import numpy as np
 import mapper
+import combiner
 import reducer
 import sorter
 import flight
+
 from operator import itemgetter
 
 # Tasks
@@ -98,10 +100,10 @@ def multi_thread_mapreduce():
     # Load passenger_data
     passenger_data = get_passenger_data()
     dataframes = []
-    # For each passenger_id
-    for passenger_id in passenger_data['passenger_id'].unique():
+
+    for pid in passenger_data['passenger_id'].unique():
         # create temporary dataframe for this id
-        temp_data = passenger_data[passenger_data['passenger_id'] == passenger_id]
+        temp_data = passenger_data[passenger_data['passenger_id'] == pid]
         # if flight_id in temp_data occurs more than once, delete row
         temp_data = temp_data.drop_duplicates(subset='flight_id', keep='first')
         # append temp_data to dataframes
@@ -111,7 +113,7 @@ def multi_thread_mapreduce():
     passenger_data = pd.concat(dataframes)
 
     passenger_data.to_csv('final.csv', index=False)
-    # return
+
     # Split passenger_data into processor count partitions
     partitions = np.array_split(passenger_data, os.cpu_count())
 
@@ -121,97 +123,49 @@ def multi_thread_mapreduce():
     # Apply mapper function to each partition
     mapper.multithread_map(partitions, map_results)
 
-    # For each list in map results, sum lengths
-    length = sum(len(result) for result in map_results)
-    print(f"Map results: {length}")
 
+    # Reduce all data partitions
     # Initialise empty list of length equal to number of partitions
     reduce_results = multiprocessing.Manager().list([None] * len(map_results))
     # Apply multithreading reduce function to each map_result
     reducer.multithread_reduce(map_results, reduce_results)
 
-    # From 4 to 2
+    # Partition count is same as cpu core count
     partitions = os.cpu_count()
-    while partitions > 0:
-        # Right bit shift to halve the value to 0
+    while partitions > 1:
+        # Right bit shift to halve the value each loop until 0
         partitions = partitions >> 1
-        # Holds processed reduce results
+        # Stores processed reduce results as backup
         temp = reduce_results
-        print(f"Length of reduce_results = {len(reduce_results)}")
+        # print(f"Length of reduce_results = {len(reduce_results)}")
         # Initialise empty list of length equal to number of new partitions
         reduce_results = multiprocessing.Manager().list([None] * partitions)
         # For each pair of lists in temp
-        for procnum, j in enumerate(zip(range(0, len(reduce_results)*2, 2), range(1, len(reduce_results)*2+1, 2))):
-            list_1 = j[0]
-            list_2 = j[1]
-            # print(f"Combining: List[{list_1}] with list[{list_2}]")
-            # length of temp[list_1] + length of temp[list_2]
-            length = len(temp[list_1]) + len(temp[list_2])
-            # print temp[list_1] and temp[list_2]
-            print(f"Length of {len(temp[list_1])} + {len(temp[list_2])} = {length}")
-            lists = temp[list_1:list_2+1]
-            # print sum of length of each list
-            print(f"Length of lists = {sum(len(result) for result in lists)}")
-            combine(lists, reduce_results, procnum)
-        print(f"Length of reduce_results {len(reduce_results)}  (combined)")
-        if i != 1:
-            print(len(reduce_results))
+        combiner.multithread_combine(temp, reduce_results)
+
+        # print(f"Length of reduce_results {len(reduce_results)}  (combined)")
+        if partitions != 1:
             reducer.multithread_reduce(reduce_results, reduce_results)
-            print("reduced...")
-            print(len(reduce_results))
         # Temp
         count = 0
         for fs in reduce_results:
             for f in fs:
                 count += len(f.passenger_list)
-        print(f"Flights: {count}")
-
-
 
     length = sum(len(result) for result in reduce_results)
     print(f"Reduction overall size: {length}")
-
     # Combine each list in reduce_results
     reduced = [str(item) for sublist in reduce_results for item in sublist]
     # Convert reduced to dataframe
     reduced = pd.DataFrame(reduced)
-
-    # # Sort to alphabetical order by airport/flight
+    # Sort reduced data in alphabetical order for airport/flight
     reduced = sorter._sort(reduced)
-    # Convert sorted dataframe to list
+    # Convert sorted  to list
     reduced = reduced[0].tolist()
-
-    # Num passengers
-    passengers = [f.split(",")[4:] for f in reduced]
-    count = [j for sub in passengers for j in sub]
-    print(f"(After sort)\tFlights/Passenger: {len(count)}")
-
+    # Convert list of flight strings to flight objects
     reduced = [flight.Flight(row) for row in reduced]
-
-    magic = 0
-    for f in reduced:
-        # f.passenger_list = list(set(f.passenger_list))
-        magic += len(f.passenger_list)
-    print(magic)
-    # Get total passengers from reduced
-    passenger_count = sum(len(passenger.passenger_list) for passenger in reduced)
-    print(f"Total flights: {passenger_count}")
-    # Final reduce of reduced data
+    # Final reduce of combined reduced partitions
     reducer._reduce(reduced)
-
-
-def combine(data, ret, procnum):
-    """Combine results from map and reduce
-
-    Args:
-        ret (list): list of lists of results
-    """
-    # sum of lengths of lists in data
-    length = sum(len(result) for result in data)
-    print(f"overall should be: {length}")
-    ret[procnum] = [item for sublist in data for item in sublist]
-    print(len(ret[procnum]))
-    print("oh")
 
 
 def unique_passengers(data):
@@ -296,6 +250,7 @@ def main():
     else:
         print("[*]\tSingle-threaded")
         single_thread_mapreduce()
+    return
     # Read reduced flight
     reduced_data = load_reduced_data(reduced_data_name)
     # Remove escape characters
@@ -308,7 +263,6 @@ def main():
     )
 
     airports = get_airports(airport_data)
-
     # Task 1
     from_count = get_total_number_of_flights_from_airport(reduced_data, airports)
     print(*from_count, sep="\n")

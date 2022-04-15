@@ -13,7 +13,10 @@ def _map(data, ret=None, procnum=-1, file_name="mapped_data.csv", hadoop_mode=Fa
         data (pd.Dataframe): passenger data with headers
     """
 
-    print("[*]\tMapper")
+    if procnum == -1:
+        print("[*]\tSingle Thread Mappper")
+    else:
+        print("[*]\tMapper\tThread " + str(procnum))
     # Convert entire dataframe to a string, each row separated by a new line
     passenger_data = data.to_string(
         header=False, index=False, index_names=False

@@ -12,7 +12,10 @@ def _reduce(sorted_flights, ret=None, procnum=-1, file_name="reduced_data.csv", 
     Args:
         sorted_data (pd.DataFrame): mapped data
     """
-    print("[*]\tReduce")
+    if procnum == -1:
+        print("[*]\tSingle Thread Reducer")
+    else:
+        print("[*]\tReduce\tThread " + str(procnum))
     last_flight = None
     last_flight_key = None
     reduced_data = []
@@ -64,7 +67,7 @@ def _reduce(sorted_flights, ret=None, procnum=-1, file_name="reduced_data.csv", 
         for flight in reduced_data:
             passengers.extend(iter(flight.passenger_list))
         # Count unique passengers
-        print(f"[*]\tOverall Passengers: {len(passengers)}")
+        # print(f"[*]\tOverall Passengers: {len(passengers)}")
 
         if hadoop_mode:
             # Write reduced data to stdout
