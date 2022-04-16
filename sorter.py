@@ -6,7 +6,7 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 
-def _sort(data, file_name="sorted_data.csv", hadoop_mode=False, ret=None, procnum=-1):
+def _sort(data, file_name="mapreduce_output/sorted_data.csv", hadoop_mode=False, ret=None, procnum=-1):
     """Sort mapped dataframe
 
     Args:

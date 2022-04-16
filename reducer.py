@@ -8,7 +8,7 @@ import pandas as pd
 from flight import Flight
 
 
-def _reduce(sorted_flights, ret=None, procnum=-1, file_name="reduced_data.csv", hadoop_mode=False):
+def _reduce(sorted_flights, ret=None, procnum=-1, file_name="mapreduce_output/reduced_data.csv", hadoop_mode=False):
     """Condense flight_id
 
     Args:

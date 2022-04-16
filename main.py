@@ -16,7 +16,7 @@ import sorter
 
 
 # Tasks
-def get_total_number_of_flights_from_airport(reduced_data, airports):
+def get_total_airport_flights(reduced_data, airports):
     """Get total number of flights from airport (Task 1)
 
     Args:
@@ -25,25 +25,38 @@ def get_total_number_of_flights_from_airport(reduced_data, airports):
     Return:
         dict: airports to number of flights from those airports
     """
-    from_count = {}
+    flight_counts = {}
     for airport in airports:
-        # Initialise from count for airport entry in dictionary
-        from_count[airport] = 0
+        # Initialise flight count for airport entry in dictionary
+        flight_counts[airport] = 0
         for from_airport in reduced_data:
             # comma separated string to list
             from_airport = from_airport[0].split(",")
+            # If airport is the same as from_airport
             if airport == from_airport[1]:
-                from_count[airport] += len(from_airport) - 4
+                # Increment flight count for this airport in dictionary
+                flight_counts[airport] += len(from_airport) - 4
 
-    # order from_count in descending order
-    from_count = sorted(from_count.items(), key=lambda x: x[1], reverse=True)
+    # order flight_counts in descending order
+    flight_counts = sorted(flight_counts.items(), key=lambda x: x[1], reverse=True)
 
-    # Save results to file
-    with open("from_count.csv", "w", encoding="utf-8") as f:
-        for key, value in from_count:
-            f.write(f"{key},{value}\n")
+    # NOTE: Keep results consistent, order by airport too
+    # flight_counts to dataframe
+    flight_counts = pd.DataFrame(flight_counts, columns=["airport", "flights"])
+    dataframes = []
+    # For each unique number of flights in flight_counts
+    for i in flight_counts["flights"].unique():
+        # Create temp dataframe with same flights value
+        temp = flight_counts[flight_counts["flights"] == i]
+        # Sort temp by airport
+        temp = temp.sort_values(by="airport")
+        # Append temp to dataframes
+        dataframes.append(temp)
+    flight_counts = pd.concat(dataframes)
 
-    return from_count
+    flight_counts.to_csv(f"{TASK_RESULT_DIR}/flight_count.csv", index=False)
+
+    return flight_counts
 
 
 def get_passenger_with_most_flights(data):
@@ -56,9 +69,9 @@ def get_passenger_with_most_flights(data):
         int: number of flights
     """
     passengers = {}
-    for flight in data:
-        flight = flight[0].split(",")
-        for passenger in flight[4:]:
+    for f in data:
+        f = f[0].split(",")
+        for passenger in f[4:]:
             if passenger in passengers:
                 passengers[passenger] += 1
             else:
@@ -71,12 +84,66 @@ def get_passenger_with_most_flights(data):
     # order passengers in descending order
     passengers = sorted(passengers.items(), key=lambda x: x[1], reverse=True)
 
-    # Save results to file
-    with open("passengers.csv", "w", encoding="utf-8") as f:
-        f.write("passenger,flights\n")
-        for key, value in passengers:
-            f.write(f"{key},{value}\n")
-    return max_passenger, flight_count
+    # NOTE: Keep results consistent, order by passenger too
+    # from_count to dataframe
+    passengers = pd.DataFrame(passengers, columns=["passenger", "flights"])
+    dataframes = []
+    # For each unique number of flights in passengers
+    for i in passengers["flights"].unique():
+        # Create temp dataframe with same flights value
+        temp = passengers[passengers["flights"] == i]
+        # Sort temp by passenger
+        temp = temp.sort_values(by="passenger")
+        # Append temp to dataframes
+        dataframes.append(temp)
+    passengers = pd.concat(dataframes)
+
+    passengers.to_csv(f"{TASK_RESULT_DIR}/passengers.csv", index=False)
+
+    # Get max flight count from passengers
+    max_flight_count = passengers["flights"].max()
+    # Filter passengers with max flight count
+    passengers = passengers[passengers["flights"] == max_flight_count]
+    max_passenger_list = passengers["passenger"].tolist()
+
+    return max_passenger_list, max_flight_count
+
+
+def print_task_1_results(airport_flights):
+    """Prints results for Task 1
+
+    Args:
+        airport_flights (pd.DataFrame): airport counts
+    """
+    print("\n[*]\tTask 1\n")
+    print("Airport | Flights")
+    print("----------------")
+    airport_flights = list(zip(airport_flights["airport"],
+                            airport_flights["flights"]))
+    # Print each item in airport_flights
+    for airport, flight_count in airport_flights:
+        print(f"{airport}\t| {flight_count}")
+    
+    print(f"\nThe airport '{airport_flights[0][0]}' with most flights, has {airport_flights[0][1]} flights")
+
+
+def print_task_2_results(passengers, flight_count):
+    """Prints results for Task 2
+
+    Args:
+        passengers (list): list of passengers with most flights
+        flight_count (int): number of flights
+    """
+    print("\n[*]\tTask 2\n")
+    # If there's more than 1 passenger with most flights
+    if len(passengers) > 1:
+        print("Passengers")
+        print("----------")
+        print(*passengers, sep="\n")
+        print(f"have the most number of flights ({flight_count})")
+        return
+
+    print(f"{passengers[0]} has the most number of flights ({flight_count})")
 
 
 # Get/Load data
@@ -127,28 +194,31 @@ def get_reduced_data(file_name):
 
 
 # MapReduce functions
-def single_thread_mapreduce():
-    """Test mapreduce functions"""
+def single_thread_mapreduce(passenger_data):
+    """Single thread mapreduce
+    
+    Args:
+        passenger_data (pd.DataFrame): passenger data
+    """
     # Load environment variables from .env
     load_dotenv()
     # Initialise mapreduce file names
     mapper_data_name = os.getenv("MAPPED_DATA")
-    reduced_data_name = os.getenv("REDUCED_DATA")
-    # Load passenger data with custom headers
-    passenger_data = get_passenger_data()
-    print(len(passenger_data['passenger_id'].unique()))
+    REDUCED_DATA_DIR = os.getenv("REDUCED_DATA_DIR")
     # Map passenger data to flights
     mapper._map(passenger_data, file_name=mapper_data_name)
     # Load sorted dataframe into dataframe
     mapped_data = pd.read_csv(mapper_data_name, header=None)
     # Reduce dataframe
-    reducer._reduce(mapped_data, file_name=reduced_data_name)
+    reducer._reduce(mapped_data, file_name=REDUCED_DATA_DIR)
 
 
-def multi_thread_mapreduce():
-    # Load passenger_data
-    passenger_data = get_passenger_data()
-
+def multi_thread_mapreduce(passenger_data):
+    """Multi-thread mapreduce functions
+    
+    Args:
+        passenger_data (pd.DataFrame): passenger data
+    """
     # Split passenger_data into processor count partitions
     partitions = np.array_split(passenger_data, os.cpu_count())
 
@@ -200,6 +270,37 @@ def cls():
     os.system("cls" if os.name == "nt" else "clear")
 
 
+def init_settings():
+    """Initialise settings for mapreduce"""
+    # Declare global variables
+    global DATA_DIR
+    global TASK_RESULT_DIR
+    global MULTITHREADING
+    global REDUCED_DATA_DIR
+    global MAPREDUCE
+
+    # Load environment variables from .env
+    load_dotenv()
+    # Initialise settings from environment variables
+    MAPREDUCE = strtobool(os.getenv("EXECUTE_MAPREDUCE"))
+    MULTITHREADING = strtobool(os.getenv("MULTITHREAD"))
+    hadoop = strtobool(os.getenv("USE_HADOOP_OUTPUT"))
+
+    # NOTE: If we're using hadoop, assign different output directory
+    # versus using python script
+    REDUCED_DATA_DIR = os.getenv("HADOOP_OUTPUT_DIR") \
+        if hadoop  \
+        else os.getenv("REDUCED_DATA_DIR")
+        
+    # Load user specified data directory
+    DATA_DIR = os.getenv("DATA_DIR")
+    TASK_RESULT_DIR = os.getenv("TASK_RESULT_DIR")
+    folders = [TASK_RESULT_DIR, "mapreduce_output"]
+    for folder in folders:
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+
 def get_airports(data):
     """Data Wrangling to match airport_code to corresponding airport/lat/long
 
@@ -215,41 +316,35 @@ def get_airports(data):
 
 def main():
     """Main function"""
-    global DATA_DIR
     # Clear console
     cls()
-    # Load environment variables from .env
-    load_dotenv()
-    # Initialise settings from environment variables
-    multithreading = strtobool(os.getenv("MULTITHREAD"))
-    use_hadoop_output = strtobool(os.getenv("USE_HADOOP_OUTPUT"))
-    reduced_data_name = os.getenv("HADOOP_OUTPUT_DIR") \
-        if use_hadoop_output  \
-        else os.getenv("REDUCED_DATA")
-    # Load user specified data directory
-    DATA_DIR = os.getenv("DATA_DIR")
+    init_settings()
+    passenger_data = get_passenger_data()
 
-    if multithreading:
-        print("[*]\tMulti-threaded")
-        multi_thread_mapreduce()
-    else:
-        print("[*]\tSingle-threaded")
-        single_thread_mapreduce()
+    # NOTE: Executes MapReduce process on a single or multiple threads
+    if MAPREDUCE:
+        if not MULTITHREADING:
+            print("[*]\tSingle-threaded")
+            single_thread_mapreduce(passenger_data)
 
-    # Get reduced flight
-    reduced = get_reduced_data(reduced_data_name)
+        if MULTITHREADING:
+            print("[*]\tMulti-threaded")
+            multi_thread_mapreduce(passenger_data)
+
+    # Get reduced flight data
+    reduced = get_reduced_data(REDUCED_DATA_DIR)
     # Get airport data
     airport_data = get_airport_data()
     # Get airports from airport_data
     airports = get_airports(airport_data)
 
     # Task 1
-    from_count = get_total_number_of_flights_from_airport(reduced, airports)
-    print(*from_count, sep="\n")
+    flight_numbers = get_total_airport_flights(reduced, airports)
+    print_task_1_results(flight_numbers)
 
     # Task 2
-    max_passenger, flight_count = get_passenger_with_most_flights(reduced)
-    print(f"{max_passenger} has the most number of flights ({flight_count})")
+    passengers, flight_count = get_passenger_with_most_flights(reduced)
+    print_task_2_results(passengers, flight_count)
 
 
 if __name__ == "__main__":

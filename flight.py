@@ -68,6 +68,9 @@ class Flight:
         Returns:
             list: updated passenger list
         """
+        # If passenger already in self.passenger_list, return self.passenger_list
+        if passenger in self.passenger_list:
+            return self.passenger_list
         self.passenger_list.append(passenger)
         return self.passenger_list
 
@@ -82,7 +85,7 @@ class Flight:
 
 
 def main():
-    """Main function"""
+    """Main function to test flight class"""
     flight = Flight("SQU6245R_DEN,FRA,1420564460,1049,UES9151GS5")
     print(flight)
     flight = Flight("SQU6245R_DEN,FRA,1420564460,1049,test1,test2,test3")
