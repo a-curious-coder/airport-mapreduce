@@ -219,6 +219,9 @@ def multi_thread_mapreduce(passenger_data):
     Args:
         passenger_data (pd.DataFrame): passenger data
     """
+    # Shuffle order of passenger_data
+    passenger_data = passenger_data.sample(frac=1).reset_index(drop=True)
+    print(passenger_data.head())
     # Split passenger_data into processor count partitions
     partitions = np.array_split(passenger_data, os.cpu_count())
 
@@ -247,19 +250,13 @@ def multi_thread_mapreduce(passenger_data):
         combiner.multithread_combine(temp, reduce_results)
 
         if partitions != 1:
+            # Sort each partition as to successfully reduce each list
+            sorter.multithread_sort(reduce_results, reduce_results)
+            # Execute multithread reduce function
             reducer.multithread_reduce(reduce_results, reduce_results)
 
-    # NOTE: Final reduce on last data partition
-    # Combine each list in reduce_results
-    reduced = [str(item) for sublist in reduce_results for item in sublist]
-    # Convert reduced to dataframe
-    reduced = pd.DataFrame(reduced)
-    # Sort reduced data in alphabetical order for airport/flight
-    reduced = sorter._sort(reduced)
-    # Convert sorted  to list
-    reduced = reduced[0].tolist()
-    # Convert list of flight strings to flight objects
-    reduced = [flight.Flight(row) for row in reduced]
+    # Sort final partition's flight data by flight_id
+    reduced = sorter._sort(reduce_results)
     # Final reduce of combined reduced partitions
     reducer._reduce(reduced)
 

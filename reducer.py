@@ -8,7 +8,7 @@ import pandas as pd
 from flight import Flight
 
 
-def _reduce(sorted_flights, ret=None, procnum=-1, file_name="mapreduce_output/reduced_data.csv", hadoop_mode=False):
+def _reduce(flights, ret=None, procnum=-1, file_name="mapreduce_output/reduced_data.csv", hadoop_mode=False):
     """Condense flight_id
 
     Args:
@@ -18,63 +18,45 @@ def _reduce(sorted_flights, ret=None, procnum=-1, file_name="mapreduce_output/re
         print("[*]\tSingle Thread Reducer")
     else:
         print("[*]\tReduce\tThread " + str(procnum))
+
     last_flight = None
     last_flight_key = None
     reduced_data = []
 
-    # If we have a list of flight objects
-    if type(sorted_flights[0]) == Flight:
-        # Convert each flight to string format
-        flights = [str(flight) for flight in sorted_flights]
-    # Else if there is no return list
-    elif ret is None:
-        print(sorted_flights.head())
-        # Dataframe to string of comma separated values
-        flights = sorted_flights.to_string(
-            header=False, index=False, index_names=False
-        ).split("\n")
-        flights = [','.join(flight.split()) for flight in flights]
-
-    # For flight in mapped data
-    for line in flights:
-        # Get flight from line
-        flight = Flight(line)
-        # Check if last flight is the current flight.key
+    # NOTE: Reduce logic relies on flight data being alphabetically sorted
+    #  Otherwise the partitions aren't actually being reduced
+    for flight in flights:
+        # NOTE: Check if last flight checked is the same as current flight
+        # If last flight is same as current flight
         if last_flight_key != flight.get_flight_key():
-            # If last_flight_key is not current.key, output the previous key
-            if last_flight_key:
-                # Output to stdout
+            if last_flight is not None:
+                # Append last checked flight populated with passengers to reduced data
                 reduced_data.append(last_flight)
-            # Set new key
+            # Set new flight key
             last_flight = flight
+            # Ensure the last flight key is set to current flight
             last_flight_key = flight.get_flight_key()
         else:
-            # If last flight key is the current flight key
-            #   add passenger to passenger_list
+            # If last flight is current flight add passenger to last flight's passenger_list
             for passenger in flight.passenger_list:
                 last_flight.add_passenger(passenger)
 
-    # Output Last Flight
+    # Add final flight to reduced_data
     if last_flight_key == flight.get_flight_key():
         reduced_data.append(last_flight)
 
+    # If we're executing reduce on a single thread
     if ret is None:
         # Write reduced data to file
         with open(file_name, "w", encoding="utf-8") as file:
             for flight in reduced_data:
-                # flight.passenger_list = list(set(flight.passenger_list))
                 file.write(str(flight)+"\n")
-
-        passengers = []
-        for flight in reduced_data:
-            passengers.extend(iter(flight.passenger_list))
-        # Count unique passengers
-        # print(f"[*]\tOverall Passengers: {len(passengers)}")
-
+        # Check if file being executed via hadoop
         if hadoop_mode:
             # Write reduced data to stdout
             print(*reduced_data, sep="\n")
     else:
+        # Assign reduced data 
         ret[procnum] = reduced_data
 
 

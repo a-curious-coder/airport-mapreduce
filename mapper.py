@@ -15,7 +15,7 @@ def _map(data, ret=None, procnum=None, file_name="mapreduce_output/mapped_data.c
         data (pd.Dataframe): passenger data with headers
         ret (list): list we want to assign mapped results to during 
             multi-threaded execution
-        procnum (int): thread/process number
+        procnum (int): thread/process number representing the index of the partition
         file_name (str): file name to save mapped data to during 
             single-threaded execution
         hadoop_mode (bool): if we are running mapper through hadoop
