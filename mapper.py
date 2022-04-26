@@ -47,7 +47,7 @@ def _map(data, ret=None, procnum=None, file_name="mapreduce_output/mapped_data.c
         # Move Passenger ID from beginning of list to last place in list
         elements = elements[-5:] + elements[:-5]
         # Merge flight id with airport code
-        flight_data = [elements[0] + "_" + elements[1]]
+        flight_data = [elements[1] + "_" + elements[0]]
         # Appends elements from row position 2 to flight_data
         flight_data.extend(elements[2:])
         # Convert transformed data to string as comma separated values

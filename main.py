@@ -17,7 +17,49 @@ import sorter
 
 # Tasks
 def get_total_airport_flights(reduced_data, airports):
-    """Get total number of flights from airport (Task 1)
+    """Get total number of flights from each airport
+    
+    Args:
+        reduced_data (pd.DataFrame): reduced data
+        airports (list): list of airports
+    Return:
+        dict: airports to number of flights from those airports
+    """
+    flight_counts = {}
+    # For each unique airport
+    for airport in airports:
+        flight_counts[airport] = 0
+        # Split each row in reduced_data
+        for row in reduced_data:
+            row = row[0].split(",")
+            # If airport is the same as row
+            if airport == row[0][:3]:
+                # Increment flight count for this airport in dictionary
+                flight_counts[airport] += 1
+    
+    # Sort dictionary by values
+    flight_counts = sorted(flight_counts.items(), key=lambda x: x[1], reverse=True)
+    # flight_counts to dataframe
+    flight_counts = pd.DataFrame(flight_counts, columns=["airport", "flights"])
+    dataframes = []
+    # For each unique number of flights in flight_counts
+    for i in flight_counts["flights"].unique():
+        # Create temp dataframe with same flights value
+        temp = flight_counts[flight_counts["flights"] == i]
+        # Sort temp by airport
+        temp = temp.sort_values(by="airport")
+        # Append temp to dataframes
+        dataframes.append(temp)
+    flight_counts = pd.concat(dataframes)
+
+    flight_counts.to_csv(f"{TASK_RESULT_DIR}/flight_count.csv", index=False)
+
+    return flight_counts
+
+
+def get_passengers_per_airport(reduced_data, airports):
+    """Get total number of flights from each airport 
+    NOTE: Fancied playing around with the data
 
     Args:
         reduced_data (pd.DataFrame): reduced data
